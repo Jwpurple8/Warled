@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Histórias Online</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        header { background: #000000; color: #d7aef0; padding: 15px; text-align: center; }
+        .container { padding: 20px; max-width: 800px; margin: auto; position: relative; }
+        .form-container { background: #000000; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); display: none; }
+        .form-container input, .form-container textarea { width: 100%; margin-bottom: 10px; padding: 10px; box-sizing: border-box; border: 1px solid #ddd; border-radius: 4px; color: #000; }
+        .form-container button { padding: 10px 20px; background-color: #d7aef0; color: #000; border: none; border-radius: 4px; cursor: pointer; }
+        .form-container button:hover { background-color: #b897d8; }
+        .story { background: #000000; margin-bottom: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); overflow: hidden; position: relative; cursor: pointer; }
+        .story img { width: 100%; height: auto; }
+        .story-content { padding: 15px; display: none; color: #d7aef0; }
+        .story-content h2 { margin-top: 0; font-size: 24px; color: #d7aef0; }
+        .story-content p { font-size: 16px; color: #b897d8; }
+        .show-form-button { padding: 10px 20px; background-color: #d7aef0; color: #000; border: none; border-radius: 4px; cursor: pointer; margin-bottom: 20px; }
+        .show-form-button:hover { background-color: #b897d8; }
+        .story-controls { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: #d7aef0; border-radius: 4px; }
+        .story-controls button { background: transparent; color: #d7aef0; border: none; cursor: pointer; padding: 5px; }
+        .story-controls button:hover { background: rgba(0,0,0,0.8); }
+        .admin-button { 
+            position: fixed; 
+            top: 10px; 
+            right: 10px; 
+            padding: 10px 20px; 
+            background-color: #d7aef0; 
+            color: #000; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            z-index: 1000; /* Garante que o botão fique sobre os outros elementos */
+        }
+        .admin-button:hover { 
+            background-color: #b897d8; 
+        }
+        .admin-password-container { 
+            display: none; 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            right: 0; 
+            bottom: 0; 
+            background: rgba(0,0,0,0.5); 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 1000; /* Garante que esteja sobre os outros elementos */
+        }
+        .admin-password-box { 
+            background: #000000; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+        }
+        .admin-password-box input { 
+            margin-bottom: 10px; 
+            padding: 10px; 
+            width: 80%; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            color: #000; 
+        }
+        .admin-password-box button { 
+            padding: 10px 20px; 
+            background-color: #d7aef0; 
+            color: #000; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        .admin-password-box button:hover { 
+            background-color: #b897d8; 
+        }
+    </style>
+</head>
+<style>
+  .background-color{ background-color: #b897d8;
+  }
+  }
+</style>
+<body>
+    <header>
+        <h1>warled</h1>
+    </header>
+    <button class="admin-button" id="admin-button">Admin</button>
+    <div class="container">
+        <div class="admin-password-container" id="admin-password-container">
+            <div class="admin-password-box">
+                <h2>Digite a Senha de Admin</h2>
+                <input type="password" id="admin-password" placeholder="Senha Admin">
+                <button id="admin-submit-button">Entrar</button>
+            </div>
+        </div>
+        <button class="show-form-button" id="show-form-button">Escrever Nova História</button>
+        <div class="form-container" id="form-container">
+            <form id="story-form">
+                <input type="text" id="title" placeholder="Título da História" required>
+                <input type="file" id="cover-image" accept="image/*" required>
+                <textarea id="content" placeholder="Conteúdo da História" rows="10" required></textarea>
+                <input type="hidden" id="edit-index">
+                <button type="submit">Adicionar História</button>
+            </form>
+        </div>
+        <div id="stories-container">
+            <!-- Histórias adicionadas pelos usuários aparecerão aqui -->
+        </div>
+    </div>
+
+    <script type="module">
+        // Importando as funções necessárias do SDK do Firebase
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-analytics.js";
+
+        // Configuração do Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAkaIgJJvO2wrCvxEqSZ9uc4gSfvePIL3o",
+            authDomain: "warled-50588.firebaseapp.com",
+            projectId: "warled-50588",
+            storageBucket: "warled-50588.appspot.com",
+            messagingSenderId: "587950164196",
+            appId: "1:587950164196:web:a182a613bb0b30d78384f1",
+            measurementId: "G-KFTSCKEXL5"
+        };
+
+        // Inicializando o Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const analytics = getAnalytics(app);
+
+        let isAdmin = false;
+
+        // Função para carregar histórias do Firestore
+        async function loadStories() {
+            const storiesContainer = document.getElementById('stories-container');
+            const querySnapshot = await getDocs(collection(db, 'stories'));
+
+            storiesContainer.innerHTML = ''; // Limpar histórias existentes
+
+            querySnapshot.forEach((docSnapshot) => {
+                const story = docSnapshot.data();
+                const storyElement = document.createElement('div');
+                storyElement.className = 'story';
+                storyElement.innerHTML = `
+                    ${isAdmin ? `<div class="story-controls">
+                        <button onclick="editStory('${docSnapshot.id}')">Editar</button>
+                        <button onclick="deleteStory('${docSnapshot.id}')">Excluir</button>
+                    </div>` : ''}
+                    <img src="${story.coverImage}" alt="Capa da História">
+                    <div class="story-content">
+                        <h2>${story.title}</h2>
+                        <p>${story.content}</p>
+                    </div>
+                `;
+                storyElement.querySelector('img').addEventListener('click', function() {
+                    this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'block' ? 'none' : 'block';
+                });
+                storiesContainer.appendChild(storyElement);
+            });
+        }
+
+        // Função para salvar histórias no Firestore
+        async function saveStory(story, id) {
+            if (id) {
+                // Atualizar uma história existente
+                await setDoc(doc(db, 'stories', id), story);
+            } else {
+                // Adicionar uma nova história
+                await addDoc(collection(db, 'stories'), story);
+            }
+        }
+
+        // Função para adicionar ou atualizar uma história
+        async function addOrUpdateStory() {
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const coverImage = document.getElementById('cover-image').files[0];
+            const id = document.getElementById('edit-index').value;
+
+            if (coverImage) {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    const story = {
+                        title: title,
+                        content: content,
+                        coverImage: e.target.result
+                    };
+
+                    // Salvar a história no Firestore
+                    await saveStory(story, id);
+
+                    // Atualizar a visualização de histórias
+                    loadStories();
+
+                    // Limpar o formulário após adicionar/atualizar a história
+                    document.getElementById('story-form').reset();
+                    document.getElementById('form-container').style.display = 'none';
+                };
+                reader.readAsDataURL(coverImage);
+            }
+        }
+
+        // Função para editar uma história
+        async function editStory(id) {
+            const docRef = doc(db, 'stories', id);
+            const docSnapshot = await getDoc(docRef);
+            const story = docSnapshot.data();
+
+            document.getElementById('title').value = story.title;
+            document.getElementById('content').value = story.content;
+            document.getElementById('edit-index').value = id;
+
+            const coverImage = document.getElementById('cover-image');
+            coverImage.dataset.src = story.coverImage; // Armazena a URL da imagem atual
+            coverImage.value = ''; // Limpar o arquivo selecionado
+
+            document.getElementById('form-container').style.display = 'block';
+        }
+
+        // Função para excluir uma história
+        async function deleteStory(id) {
+            await deleteDoc(doc(db, 'stories', id));
+            loadStories();
+        }
+
+        // Função para verificar a senha de admin
+        function checkAdminPassword() {
+            const password = document.getElementById('admin-password').value;
+            if (password === 'pousempai') {
+                isAdmin = true;
+                document.getElementById('admin-password-container').style.display = 'none';
+                loadStories(); // Atualizar histórias para mostrar botões de edição e exclusão
+            } else {
+                alert('Senha incorreta!');
+            }
+        }
+
+        document.getElementById('admin-button').addEventListener('click', function() {
+            document.getElementById('admin-password-container').style.display = 'flex';
+        });
+
+        document.getElementById('admin-submit-button').addEventListener('click', function() {
+            checkAdminPassword();
+        });
+
+        document.getElementById('story-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            addOrUpdateStory();
+        });
+
+        document.getElementById('show-form-button').addEventListener('click', function() {
+            const formContainer = document.getElementById('form-container');
+            formContainer.style.display = formContainer.style.display === 'block' ? 'none' : 'block';
+        });
+
+        // Carregar histórias ao iniciar
+        loadStories();
+    </script>
+</body>
+</html>
